@@ -1,9 +1,15 @@
 # Hook Mod
 
-## Setup
+A Fabric mod that adds a grappling hook item to Minecraft.
 
-For setup instructions, please see the [Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up) related to the IDE that you are using.
+## Supported Version
 
-## License
+- Minecraft: 26.1.2
+- Fabric Loader: 0.19.2+
+- Fabric API: 0.149.0+26.1.2
+- Java: 25
 
-This template is available under the CC0 license. Feel free to learn from it and incorporate it in your own projects.
+## Build
+
+```bash
+./gradlew build
