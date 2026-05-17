@@ -96,8 +96,15 @@ public final class HookRaycast {
 
     /**
      * 判断实体是否为有效的勾爪目标。
-     * 第一版：排除使用者自身、已死亡实体、旁观者。
-     * 后续阶段通过配置扩展。
+     *
+     * <p>实体规则：
+     * <ul>
+     *   <li>排除 null、自身、已死亡实体</li>
+     *   <li>排除创造模式 / 旁观模式玩家</li>
+     *   <li>排除 Boss（末影龙、凋灵）</li>
+     *   <li>第一版默认不允许拉其他玩家（后续通过配置开启 PvP）</li>
+     *   <li>排除不可推动实体</li>
+     * </ul>
      */
     public static boolean isValidHookTarget(Player player, Entity target) {
         if (target == null) {
@@ -109,10 +116,46 @@ public final class HookRaycast {
         if (!target.isAlive()) {
             return false;
         }
-        if (target instanceof Player targetPlayer && targetPlayer.isSpectator()) {
+
+        // Boss 检查
+        if (isBossEntity(target)) {
             return false;
         }
+
+        // 玩家规则：第一版默认禁止拉其他玩家
+        if (target instanceof Player targetPlayer) {
+            if (targetPlayer.isSpectator() || targetPlayer.isCreative()) {
+                return false;
+            }
+            // PvP 勾爪默认关闭，后续通过配置开启
+            return false;
+        }
+
+        // 不可推动实体
+        if (!target.isPushable()) {
+            return false;
+        }
+
+        // 无物理实体
+        if (target.noPhysics) {
+            return false;
+        }
+
         return true;
+    }
+
+    /**
+     * 判断实体是否为 Boss。
+     */
+    private static boolean isBossEntity(Entity entity) {
+        // 末影龙和凋灵是主要 Boss
+        if (entity instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon) {
+            return true;
+        }
+        if (entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss) {
+            return true;
+        }
+        return false;
     }
 
     /**

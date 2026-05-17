@@ -7,6 +7,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -120,7 +121,9 @@ public class HookItem extends Item {
     }
 
     /**
-     * 实体拉动逻辑（阶段 6 将进一步完善）。
+     * 实体拉动逻辑。
+     *
+     * <p>将目标实体拉向玩家。对 LivingEntity 额外重置摔落距离。
      */
     private InteractionResult grappleEntity(Player player, ItemStack stack, Entity target, Vec3 hitPos) {
         if (!HookRaycast.isValidHookTarget(player, target)) {
@@ -134,13 +137,21 @@ public class HookItem extends Item {
             return InteractionResult.CONSUME;
         }
 
-        // 拉实体向玩家
+        // 计算拉力：从目标位置拉向玩家位置
         Vec3 velocity = HookMath.calculatePullVelocity(
                 target.position(), player.position(),
                 ENTITY_PULL_STRENGTH, ENTITY_VERTICAL_BOOST, MAX_PULL_VELOCITY
         );
+
+        // 应用速度
         target.setDeltaMovement(velocity);
         target.hurtMarked = true;
+
+        // 对生物额外处理
+        if (target instanceof LivingEntity living) {
+            // 重置摔落距离，防止拉过来后摔死
+            living.fallDistance = 0;
+        }
 
         onSuccessfulUse(player, stack);
         return InteractionResult.CONSUME;
