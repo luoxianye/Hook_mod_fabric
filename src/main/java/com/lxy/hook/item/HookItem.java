@@ -20,13 +20,21 @@ public class HookItem extends Item {
     // === 默认参数（后续阶段迁移至配置文件） ===
     private static final double MAX_DISTANCE = 32.0;
     private static final double MIN_DISTANCE = 2.0;
-    private static final double BLOCK_PULL_STRENGTH = 1.2;
-    private static final double ENTITY_PULL_STRENGTH = 0.8;
-    private static final double BLOCK_VERTICAL_BOOST = 0.45;
-    private static final double ENTITY_VERTICAL_BOOST = 0.25;
-    private static final double MAX_PULL_VELOCITY = 2.5;
-    private static final int SUCCESS_COOLDOWN_TICKS = 20;
+
+    private static final double BLOCK_PULL_STRENGTH = 3.6;
+    private static final double ENTITY_PULL_STRENGTH = 2.4;
+
+    private static final double BLOCK_VERTICAL_BOOST = 1.35;
+    private static final double ENTITY_VERTICAL_BOOST = 0.75;
+
+    private static final double MAX_PULL_VELOCITY = 7.5;
+    private static final double MAX_HORIZONTAL_VELOCITY = 6.6;
+    private static final double MAX_VERTICAL_VELOCITY = 3.6;
+
+    private static final int BLOCK_COOLDOWN_TICKS = 20;
+    private static final int ENTITY_COOLDOWN_TICKS = 25;
     private static final int FAIL_COOLDOWN_TICKS = 5;
+
     private static final int DURABILITY_COST = 1;
 
     public HookItem(Properties properties) {
@@ -46,6 +54,11 @@ public class HookItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
+        ItemStack stack = context.getItemInHand();
+        if (player.getCooldowns().isOnCooldown(stack)) {
+            return InteractionResult.PASS;
+        }
+
         BlockPos blockPos = context.getClickedPos();
         BlockState state = level.getBlockState(blockPos);
         if (state.isAir()) {
@@ -56,7 +69,7 @@ public class HookItem extends Item {
         }
 
         Vec3 hitPos = context.getClickLocation();
-        return grappleBlock(player, context.getItemInHand(), hitPos, blockPos);
+        return grappleBlock(player, stack, hitPos, blockPos);
     }
 
     // ========== 右键空气（Raycast 命中） ==========
@@ -68,20 +81,22 @@ public class HookItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
+        // 冷却检查：防止连发绕过
+        if (player.getCooldowns().isOnCooldown(stack)) {
+            return InteractionResult.PASS;
+        }
+
         HookRaycast.HookHitResult result = HookRaycast.raycast(level, player, MAX_DISTANCE);
 
         if (result == null) {
-            // 未命中任何目标，短冷却，不扣耐久
             onFailedUse(player, stack);
             return InteractionResult.CONSUME;
         }
 
-        // 实体优先
         if (result.isEntity()) {
             return grappleEntity(player, stack, result.entity, result.hitPos);
         }
 
-        // 命中方块
         if (result.isBlock()) {
             BlockState state = level.getBlockState(result.blockPos);
             if (state.isAir() || state.getCollisionShape(level, result.blockPos).isEmpty()) {
@@ -97,33 +112,39 @@ public class HookItem extends Item {
     // ========== 核心逻辑 ==========
 
     /**
-     * 方块拉动逻辑（阶段 4 提取为公共方法）。
+     * 方块拉动逻辑。
      */
     private InteractionResult grappleBlock(Player player, ItemStack stack, Vec3 hitPos, BlockPos blockPos) {
         Vec3 playerPos = player.position();
         double distance = playerPos.distanceTo(hitPos);
 
-        if (distance > MAX_DISTANCE || distance < MIN_DISTANCE) {
+        if (!isDistanceValid(distance)) {
             onFailedUse(player, stack);
             return InteractionResult.CONSUME;
         }
 
+        // 距离衰减：近距离弱拉力，远距离强拉力
+        double distanceFactor = HookMath.calculateDistanceFactor(distance, MIN_DISTANCE, MAX_DISTANCE);
+
         Vec3 velocity = HookMath.calculatePullVelocity(
                 playerPos, hitPos,
-                BLOCK_PULL_STRENGTH, BLOCK_VERTICAL_BOOST, MAX_PULL_VELOCITY
+                BLOCK_PULL_STRENGTH, BLOCK_VERTICAL_BOOST, MAX_PULL_VELOCITY, distanceFactor
         );
+
+        // 分轴限速
+        velocity = HookMath.clampHorizontalVelocity(velocity, MAX_HORIZONTAL_VELOCITY);
+        velocity = HookMath.clampVerticalVelocity(velocity, MAX_VERTICAL_VELOCITY);
+
         player.setDeltaMovement(velocity);
         player.hurtMarked = true;
         player.resetFallDistance();
 
-        onSuccessfulUse(player, stack);
+        onSuccessfulUse(player, stack, BLOCK_COOLDOWN_TICKS);
         return InteractionResult.CONSUME;
     }
 
     /**
      * 实体拉动逻辑。
-     *
-     * <p>将目标实体拉向玩家。对 LivingEntity 额外重置摔落距离。
      */
     private InteractionResult grappleEntity(Player player, ItemStack stack, Entity target, Vec3 hitPos) {
         if (!HookRaycast.isValidHookTarget(player, target)) {
@@ -132,35 +153,46 @@ public class HookItem extends Item {
         }
 
         double distance = player.position().distanceTo(hitPos);
-        if (distance > MAX_DISTANCE || distance < MIN_DISTANCE) {
+        if (!isDistanceValid(distance)) {
             onFailedUse(player, stack);
             return InteractionResult.CONSUME;
         }
 
-        // 计算拉力：从目标位置拉向玩家位置
+        // 距离衰减
+        double distanceFactor = HookMath.calculateDistanceFactor(distance, MIN_DISTANCE, MAX_DISTANCE);
+
         Vec3 velocity = HookMath.calculatePullVelocity(
                 target.position(), player.position(),
-                ENTITY_PULL_STRENGTH, ENTITY_VERTICAL_BOOST, MAX_PULL_VELOCITY
+                ENTITY_PULL_STRENGTH, ENTITY_VERTICAL_BOOST, MAX_PULL_VELOCITY, distanceFactor
         );
 
-        // 应用速度
+        // 分轴限速
+        velocity = HookMath.clampHorizontalVelocity(velocity, MAX_HORIZONTAL_VELOCITY);
+        velocity = HookMath.clampVerticalVelocity(velocity, MAX_VERTICAL_VELOCITY);
+
         target.setDeltaMovement(velocity);
         target.hurtMarked = true;
 
-        // 对生物额外处理
+        // 对生物：重置摔落距离，防止拉过来后摔死
         if (target instanceof LivingEntity living) {
-            // 重置摔落距离，防止拉过来后摔死
             living.fallDistance = 0;
         }
 
-        onSuccessfulUse(player, stack);
+        onSuccessfulUse(player, stack, ENTITY_COOLDOWN_TICKS);
         return InteractionResult.CONSUME;
     }
 
     // ========== 辅助方法 ==========
 
-    private void onSuccessfulUse(Player player, ItemStack stack) {
-        player.getCooldowns().addCooldown(stack, SUCCESS_COOLDOWN_TICKS);
+    /**
+     * 距离是否在有效范围内。
+     */
+    private boolean isDistanceValid(double distance) {
+        return distance >= MIN_DISTANCE && distance <= MAX_DISTANCE;
+    }
+
+    private void onSuccessfulUse(Player player, ItemStack stack, int cooldownTicks) {
+        player.getCooldowns().addCooldown(stack, cooldownTicks);
         EquipmentSlot slot = player.getEquipmentSlotForItem(stack);
         stack.hurtAndBreak(DURABILITY_COST, player, slot);
     }
