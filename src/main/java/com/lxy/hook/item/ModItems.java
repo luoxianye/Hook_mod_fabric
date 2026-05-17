@@ -1,11 +1,13 @@
 package com.lxy.hook.item;
 
 import com.lxy.hook.HookMod;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 
 import java.util.function.Function;
@@ -35,5 +37,11 @@ public class ModItems {
 
     public static void initialize() {
         HookMod.LOGGER.info("Registering mod items for {}", HookMod.MOD_ID);
+
+        // 加入创造模式物品栏（工具与实用物品）
+        CreativeModeTabEvents.modifyOutputEvent(
+                ResourceKey.create(Registries.CREATIVE_MODE_TAB,
+                        Identifier.fromNamespaceAndPath("minecraft", "tools_and_utilities"))
+        ).register(output -> output.accept(HOOK));
     }
 }
