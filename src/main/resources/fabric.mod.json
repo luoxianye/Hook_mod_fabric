@@ -3,13 +3,13 @@
 	"id": "hook",
 	"version": "${version}",
 	"name": "Hook Mod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "This is hook mod to add new tool in Minecraft",
 	"authors": [
-		"Me!"
+		"Lxy"
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/luoxianye/Hook_mod_fabric"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/hook/icon.png",
