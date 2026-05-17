@@ -1,4 +1,6 @@
 {
     "item.hook.hook": "Hook",
-    "item.hook.hook.tooltip": "Right-click to grapple blocks or entities."
+    "item.hook.hook.tooltip": "Right-click to grapple blocks or entities.",
+    "item.hook.hook.tooltip.distance": "Max Distance: 32 blocks",
+    "item.hook.hook.tooltip.cooldown": "Cooldown: 1s (Block) / 1.25s (Entity)"
 }

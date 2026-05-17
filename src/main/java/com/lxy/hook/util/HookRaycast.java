@@ -95,18 +95,20 @@ public final class HookRaycast {
     }
 
     /**
-     * 判断实体是否为有效的勾爪目标。
-     *
-     * <p>实体规则：
-     * <ul>
-     *   <li>排除 null、自身、已死亡实体</li>
-     *   <li>排除创造模式 / 旁观模式玩家</li>
-     *   <li>排除 Boss（末影龙、凋灵）</li>
-     *   <li>第一版默认不允许拉其他玩家（后续通过配置开启 PvP）</li>
-     *   <li>排除不可推动实体</li>
-     * </ul>
+     * 判断实体是否为有效的勾爪目标（使用默认配置）。
      */
     public static boolean isValidHookTarget(Player player, Entity target) {
+        return isValidHookTarget(player, target, false, false);
+    }
+
+    /**
+     * 判断实体是否为有效的勾爪目标。
+     *
+     * @param allowPullPlayers 是否允许拉其他玩家（PvP）
+     * @param allowPullBosses  是否允许拉 Boss
+     */
+    public static boolean isValidHookTarget(Player player, Entity target,
+                                            boolean allowPullPlayers, boolean allowPullBosses) {
         if (target == null) {
             return false;
         }
@@ -118,17 +120,18 @@ public final class HookRaycast {
         }
 
         // Boss 检查
-        if (isBossEntity(target)) {
+        if (isBossEntity(target) && !allowPullBosses) {
             return false;
         }
 
-        // 玩家规则：第一版默认禁止拉其他玩家
+        // 玩家规则
         if (target instanceof Player targetPlayer) {
             if (targetPlayer.isSpectator() || targetPlayer.isCreative()) {
                 return false;
             }
-            // PvP 勾爪默认关闭，后续通过配置开启
-            return false;
+            if (!allowPullPlayers) {
+                return false;
+            }
         }
 
         // 不可推动实体

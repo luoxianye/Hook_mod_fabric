@@ -1,4 +1,6 @@
 {
     "item.hook.hook": "勾爪",
-    "item.hook.hook.tooltip": "右键与方块或实体交互。"
+    "item.hook.hook.tooltip": "右键与方块或实体交互。",
+    "item.hook.hook.tooltip.distance": "最大距离：32 格",
+    "item.hook.hook.tooltip.cooldown": "冷却：1 秒（方块）/ 1.25 秒（实体）"
 }
