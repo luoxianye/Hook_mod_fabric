@@ -1,6 +1,7 @@
 package com.lxy.hook.item;
 
 import com.lxy.hook.config.HookConfig;
+import com.lxy.hook.entity.HookProjectileEntity;
 import com.lxy.hook.tag.ModBlockTags;
 import com.lxy.hook.util.HookMath;
 import com.lxy.hook.util.HookRaycast;
@@ -72,7 +73,7 @@ public class HookItem extends Item {
         return grappleBlock(player, stack, hitPos, blockPos, level);
     }
 
-    // ========== 右键空气（Raycast 命中） ==========
+    // ========== 右键空气（发射投射物） ==========
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
@@ -85,30 +86,9 @@ public class HookItem extends Item {
             return InteractionResult.PASS;
         }
 
-        HookConfig cfg = HookConfig.INSTANCE;
-        HookRaycast.HookHitResult result = HookRaycast.raycast(level, player, cfg.maxDistance);
-
-        if (result == null) {
-            playFailEffects(level, player);
-            onFailedUse(player, stack);
-            return InteractionResult.CONSUME;
-        }
-
-        if (result.isEntity()) {
-            return grappleEntity(player, stack, result.entity, result.hitPos, level);
-        }
-
-        if (result.isBlock()) {
-            BlockState state = level.getBlockState(result.blockPos);
-            if (!canGrappleBlock(level, result.blockPos, state)) {
-                playFailEffects(level, player);
-                onFailedUse(player, stack);
-                return InteractionResult.CONSUME;
-            }
-            return grappleBlock(player, stack, result.hitPos, result.blockPos, level);
-        }
-
-        return InteractionResult.PASS;
+        // 发射投射物，后续逻辑由 HookProjectileEntity 处理
+        HookProjectileEntity.shoot(level, player);
+        return InteractionResult.CONSUME;
     }
 
     // ========== 核心逻辑 ==========

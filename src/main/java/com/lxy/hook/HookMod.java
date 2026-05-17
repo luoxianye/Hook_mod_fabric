@@ -1,6 +1,7 @@
 package com.lxy.hook;
 
 import com.lxy.hook.config.HookConfig;
+import com.lxy.hook.entity.ModEntityTypes;
 import com.lxy.hook.item.ModItems;
 import net.fabricmc.api.ModInitializer;
 
@@ -14,6 +15,7 @@ public class HookMod implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		HookConfig.load();
+		ModEntityTypes.initialize();
 		ModItems.initialize();
 		LOGGER.info("Hook Mod initialized!");
 	}
