@@ -21,6 +21,13 @@ public class ModItems {
                     .durability(384)
     );
 
+    /** 投射物渲染专用物品（不加入创造栏） */
+    public static final Item THREW_HOOK = register(
+            "threw_hook",
+            Item::new,
+            new Item.Properties().stacksTo(1)
+    );
+
     private static <T extends Item> T register(
             String name,
             Function<Item.Properties, T> factory,

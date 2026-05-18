@@ -5,6 +5,9 @@ import com.lxy.hook.item.ModItems;
 import com.lxy.hook.util.HookMath;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -31,7 +34,9 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
     private static final int MAX_LIFE_TICKS = 100;
     private static final double SPEED = 2.0;
 
-    private UUID ownerUuid;
+    private static final EntityDataAccessor<String> OWNER_UUID_STRING =
+            SynchedEntityData.defineId(HookProjectileEntity.class, EntityDataSerializers.STRING);
+
     private int lifeTicks;
 
     public HookProjectileEntity(EntityType<?> type, Level level) {
@@ -40,7 +45,7 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
 
     public static HookProjectileEntity shoot(Level level, Player owner) {
         HookProjectileEntity hook = new HookProjectileEntity(ModEntityTypes.HOOK_PROJECTILE, level);
-        hook.ownerUuid = owner.getUUID();
+        hook.setOwnerUuid(owner.getUUID());
         hook.setPos(owner.getEyePosition());
 
         Vec3 look = owner.getLookAngle();
@@ -193,10 +198,20 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
         return null;
     }
 
+    private void setOwnerUuid(UUID uuid) {
+        this.entityData.set(OWNER_UUID_STRING, uuid.toString());
+    }
+
     private Player getOwnerPlayer() {
-        if (ownerUuid == null) return null;
-        Entity e = level().getEntity(ownerUuid);
-        return e instanceof Player p ? p : null;
+        String uuidStr = this.entityData.get(OWNER_UUID_STRING);
+        if (uuidStr.isEmpty()) return null;
+        try {
+            UUID uuid = UUID.fromString(uuidStr);
+            Entity e = level().getEntity(uuid);
+            return e instanceof Player p ? p : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private EntityHitResult findHitEntity(Vec3 from, Vec3 to) {
@@ -210,19 +225,25 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
         return null;
     }
 
-    // ====== 数据持久化 ======
+    // ====== 数据持久化与同步 ======
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(OWNER_UUID_STRING, "");
+    }
 
     @Override
     protected void addAdditionalSaveData(ValueOutput out) {
-        if (ownerUuid != null) {
-            out.putString("Owner", ownerUuid.toString());
+        String uuidStr = this.entityData.get(OWNER_UUID_STRING);
+        if (!uuidStr.isEmpty()) {
+            out.putString("Owner", uuidStr);
         }
         out.putInt("LifeTicks", lifeTicks);
     }
 
     @Override
     protected void readAdditionalSaveData(ValueInput in) {
-        ownerUuid = in.getString("Owner").map(UUID::fromString).orElse(null);
+        in.getString("Owner").ifPresent(uuidStr -> this.entityData.set(OWNER_UUID_STRING, uuidStr));
         lifeTicks = in.getIntOr("LifeTicks", 0);
     }
 
@@ -233,12 +254,18 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
 
     @Override
     public ItemStack getItem() {
-        return new ItemStack(ModItems.HOOK);
+        return new ItemStack(ModItems.THREW_HOOK);
     }
 
-    @Override
-    protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
-        // 投射物无需同步额外数据
+    /** 获取所有者 UUID（供客户端渲染绳索使用）。 */
+    public UUID getOwnerId() {
+        String uuidStr = this.entityData.get(OWNER_UUID_STRING);
+        if (uuidStr.isEmpty()) return null;
+        try {
+            return UUID.fromString(uuidStr);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @Override

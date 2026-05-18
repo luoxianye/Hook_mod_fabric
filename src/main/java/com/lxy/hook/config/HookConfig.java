@@ -17,7 +17,7 @@ public class HookConfig {
     public static HookConfig INSTANCE = new HookConfig();
 
     // === 距离 ===
-    public double maxDistance = 32.0;
+    public double maxDistance = 16.0;
     public double minDistance = 2.0;
 
     // === 拉力强度 ===
