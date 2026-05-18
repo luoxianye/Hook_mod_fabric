@@ -1,6 +1,6 @@
 {
-    "parent": "minecraft:item/handheld",
+    "parent": "minecraft:item/generated",
     "textures": {
-        "layer0": "hook:entity/threw_hook"
+        "layer0": "hook:item/threw_hook"
     }
 }

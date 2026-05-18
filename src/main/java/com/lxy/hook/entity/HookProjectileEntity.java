@@ -18,6 +18,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ItemSupplier;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
@@ -26,7 +27,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.Optional;
 import java.util.UUID;
 
 public class HookProjectileEntity extends Entity implements ItemSupplier {
@@ -38,6 +38,7 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
             SynchedEntityData.defineId(HookProjectileEntity.class, EntityDataSerializers.STRING);
 
     private int lifeTicks;
+    private double traveledDistance;
 
     public HookProjectileEntity(EntityType<?> type, Level level) {
         super(type, level);
@@ -61,6 +62,7 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
     @Override
     public void tick() {
         super.tick();
+
         lifeTicks++;
 
         if (lifeTicks > MAX_LIFE_TICKS) {
@@ -68,17 +70,47 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
             return;
         }
 
-        if (level().isClientSide()) {
+        HookConfig cfg = HookConfig.INSTANCE;
+
+        Vec3 currentPos = position();
+        Vec3 velocity = getDeltaMovement();
+
+        double remainingDistance = cfg.maxDistance - traveledDistance;
+        if (remainingDistance <= 0.0D) {
+            discard();
             return;
         }
 
-        Vec3 currentPos = position();
-        Vec3 nextPos = currentPos.add(getDeltaMovement());
+        double velocityLength = velocity.length();
+        if (velocityLength <= 1.0E-7D) {
+            discard();
+            return;
+        }
 
-        BlockHitResult blockHit = level().clip(new net.minecraft.world.level.ClipContext(
-                currentPos, nextPos,
-                net.minecraft.world.level.ClipContext.Block.COLLIDER,
-                net.minecraft.world.level.ClipContext.Fluid.NONE,
+        Vec3 stepVelocity = velocity;
+
+        if (velocityLength > remainingDistance) {
+            stepVelocity = velocity.normalize().scale(remainingDistance);
+        }
+
+        Vec3 nextPos = currentPos.add(stepVelocity);
+
+        if (level().isClientSide()) {
+            setPos(nextPos);
+            traveledDistance += stepVelocity.length();
+
+            if (traveledDistance >= cfg.maxDistance) {
+                discard();
+            }
+
+            return;
+        }
+
+        BlockHitResult blockHit = level().clip(new ClipContext(
+                currentPos,
+                nextPos,
+                ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE,
                 this
         ));
 
@@ -94,11 +126,28 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
         }
 
         setPos(nextPos);
+        traveledDistance += stepVelocity.length();
+
+        if (traveledDistance >= cfg.maxDistance) {
+            discard();
+        }
     }
 
+    private boolean exceedsMaxDistance(Vec3 targetPos) {
+        double distanceAfterHit = traveledDistance + position().distanceTo(targetPos);
+        return distanceAfterHit > HookConfig.INSTANCE.maxDistance + 1.0E-4D;
+    }
     private void onBlockHit(BlockHitResult hit) {
         Player owner = getOwnerPlayer();
-        if (owner == null) { discard(); return; }
+        if (owner == null) {
+            discard();
+            return;
+        }
+
+        if (exceedsMaxDistance(hit.getLocation())) {
+            discard();
+            return;
+        }
 
         BlockPos blockPos = hit.getBlockPos();
         BlockState state = level().getBlockState(blockPos);
@@ -122,7 +171,16 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
 
     private void onEntityHit(EntityHitResult hit) {
         Player owner = getOwnerPlayer();
-        if (owner == null) { discard(); return; }
+        if (owner == null) {
+            discard();
+            return;
+        }
+
+        if (exceedsMaxDistance(hit.getLocation())) {
+            discard();
+            return;
+        }
+
 
         Entity target = hit.getEntity();
         if (target == owner || !com.lxy.hook.util.HookRaycast.isValidHookTarget(owner, target)) {
@@ -239,12 +297,15 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
             out.putString("Owner", uuidStr);
         }
         out.putInt("LifeTicks", lifeTicks);
+        out.putDouble("TraveledDistance", traveledDistance);
     }
 
     @Override
     protected void readAdditionalSaveData(ValueInput in) {
         in.getString("Owner").ifPresent(uuidStr -> this.entityData.set(OWNER_UUID_STRING, uuidStr));
         lifeTicks = in.getIntOr("LifeTicks", 0);
+        traveledDistance = in.getDoubleOr("TraveledDistance", 0.0D);
+
     }
 
     @Override

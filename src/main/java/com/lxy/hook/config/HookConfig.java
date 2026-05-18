@@ -21,7 +21,7 @@ public class HookConfig {
     public double minDistance = 2.0;
 
     // === 拉力强度 ===
-    public double blockPullStrength = 3.6;
+    public double blockPullStrength = 2.4;
     public double entityPullStrength = 2.4;
 
     // === 垂直提升 ===
@@ -29,7 +29,7 @@ public class HookConfig {
     public double entityVerticalBoost = 0.75;
 
     // === 速度上限 ===
-    public double maxPullVelocity = 7.5;
+    public double maxPullVelocity = 6.5;
     public double maxHorizontalVelocity = 6.6;
     public double maxVerticalVelocity = 3.6;
 
