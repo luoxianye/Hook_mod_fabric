@@ -61,6 +61,7 @@ public class HookItem extends Item {
         if (player.getCooldowns().isOnCooldown(stack)) {
             return InteractionResult.PASS;
         }
+        player.getCooldowns().addCooldown(stack, HookConfig.INSTANCE.useCooldownTicks);
 
         BlockPos blockPos = context.getClickedPos();
         BlockState state = level.getBlockState(blockPos);
@@ -78,6 +79,7 @@ public class HookItem extends Item {
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+
         if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
@@ -86,8 +88,12 @@ public class HookItem extends Item {
             return InteractionResult.PASS;
         }
 
-        // 发射投射物，后续逻辑由 HookProjectileEntity 处理
+        // 右键使用瞬间进入冷却
+        player.getCooldowns().addCooldown(stack, HookConfig.INSTANCE.useCooldownTicks);
+
+        // 发射投射物
         HookProjectileEntity.shoot(level, player);
+
         return InteractionResult.CONSUME;
     }
 
@@ -207,12 +213,10 @@ public class HookItem extends Item {
 
     private void onSuccessfulUse(Player player, ItemStack stack, int cooldownTicks) {
         HookConfig cfg = HookConfig.INSTANCE;
-        player.getCooldowns().addCooldown(stack, cooldownTicks);
         EquipmentSlot slot = player.getEquipmentSlotForItem(stack);
         stack.hurtAndBreak(cfg.durabilityCost, player, slot);
     }
 
     private void onFailedUse(Player player, ItemStack stack) {
-        player.getCooldowns().addCooldown(stack, HookConfig.INSTANCE.failCooldownTicks);
     }
 }

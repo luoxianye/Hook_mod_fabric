@@ -34,6 +34,7 @@ public class HookConfig {
     public double maxVerticalVelocity = 3.6;
 
     // === 冷却（ticks） ===
+    public int useCooldownTicks = 20;
     public int blockCooldownTicks = 20;
     public int entityCooldownTicks = 25;
     public int failCooldownTicks = 5;

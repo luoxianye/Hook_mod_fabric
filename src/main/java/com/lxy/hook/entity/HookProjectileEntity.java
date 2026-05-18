@@ -244,7 +244,6 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
         HookConfig cfg = HookConfig.INSTANCE;
         ItemStack stack = findHookInHand(player);
         if (stack != null) {
-            player.getCooldowns().addCooldown(stack, cfg.blockCooldownTicks);
             EquipmentSlot slot = player.getEquipmentSlotForItem(stack);
             stack.hurtAndBreak(cfg.durabilityCost, player, slot);
         }
