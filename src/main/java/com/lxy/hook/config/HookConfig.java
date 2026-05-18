@@ -21,17 +21,20 @@ public class HookConfig {
     public double minDistance = 2.0;
 
     // === 拉力强度 ===
-    public double blockPullStrength = 2.4;
+    public double blockPullStrength = 2.8;
     public double entityPullStrength = 2.4;
 
     // === 垂直提升 ===
-    public double blockVerticalBoost = 1.35;
+    public double blockVerticalBoost = 0.0;
     public double entityVerticalBoost = 0.75;
 
     // === 速度上限 ===
     public double maxPullVelocity = 6.5;
-    public double maxHorizontalVelocity = 6.6;
-    public double maxVerticalVelocity = 3.6;
+    public double maxHorizontalVelocity = 6.5;
+    public double maxVerticalVelocity = 6.5;
+
+    // === 勾爪投射物 ===
+    public double projectileSpeed = 3.8;
 
     // === 冷却（ticks） ===
     public int useCooldownTicks = 20;

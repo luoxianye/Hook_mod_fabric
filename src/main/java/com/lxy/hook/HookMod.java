@@ -3,6 +3,7 @@ package com.lxy.hook;
 import com.lxy.hook.config.HookConfig;
 import com.lxy.hook.entity.ModEntityTypes;
 import com.lxy.hook.item.ModItems;
+import com.lxy.hook.util.PlayerPullManager;
 import net.fabricmc.api.ModInitializer;
 
 import org.slf4j.Logger;
@@ -17,6 +18,7 @@ public class HookMod implements ModInitializer {
 		HookConfig.load();
 		ModEntityTypes.initialize();
 		ModItems.initialize();
+		PlayerPullManager.initialize();
 		LOGGER.info("Hook Mod initialized!");
 	}
 }

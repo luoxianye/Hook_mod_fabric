@@ -5,6 +5,8 @@ import com.lxy.hook.entity.HookProjectileEntity;
 import com.lxy.hook.tag.ModBlockTags;
 import com.lxy.hook.util.HookMath;
 import com.lxy.hook.util.HookRaycast;
+import com.lxy.hook.util.PlayerPullManager;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -111,18 +113,8 @@ public class HookItem extends Item {
             return InteractionResult.CONSUME;
         }
 
-        double distanceFactor = HookMath.calculateDistanceFactor(distance, cfg.minDistance, cfg.maxDistance);
-        Vec3 velocity = HookMath.calculatePullVelocity(
-                playerPos, hitPos,
-                cfg.blockPullStrength, cfg.blockVerticalBoost, cfg.maxPullVelocity, distanceFactor
-        );
-        velocity = HookMath.clampHorizontalVelocity(velocity, cfg.maxHorizontalVelocity);
-        velocity = HookMath.clampVerticalVelocity(velocity, cfg.maxVerticalVelocity);
-
-        player.setDeltaMovement(velocity);
-        player.hurtMarked = true;
-        if (cfg.reduceFallDamage) {
-            player.resetFallDistance();
+        if (player instanceof ServerPlayer serverPlayer) {
+            PlayerPullManager.pullPlayerTo(serverPlayer, hitPos);
         }
 
         playSuccessEffects(level, hitPos);

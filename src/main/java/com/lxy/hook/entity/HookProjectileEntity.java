@@ -3,6 +3,8 @@ package com.lxy.hook.entity;
 import com.lxy.hook.config.HookConfig;
 import com.lxy.hook.item.ModItems;
 import com.lxy.hook.util.HookMath;
+import com.lxy.hook.util.PlayerPullManager;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -27,12 +29,12 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
+
 import java.util.UUID;
 
 public class HookProjectileEntity extends Entity implements ItemSupplier {
 
     private static final int MAX_LIFE_TICKS = 100;
-    private static final double SPEED = 2.0;
 
     private static final EntityDataAccessor<String> OWNER_UUID_STRING =
             SynchedEntityData.defineId(HookProjectileEntity.class, EntityDataSerializers.STRING);
@@ -50,7 +52,7 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
         hook.setPos(owner.getEyePosition());
 
         Vec3 look = owner.getLookAngle();
-        hook.setDeltaMovement(look.scale(SPEED));
+        hook.setDeltaMovement(look.scale(HookConfig.INSTANCE.projectileSpeed));
 
         level.addFreshEntity(hook);
         level.playSound(null, owner.blockPosition(),
@@ -203,21 +205,8 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
     }
 
     private void pullPlayerToHit(Player player, Vec3 hitPos) {
-        HookConfig cfg = HookConfig.INSTANCE;
-        double distance = player.position().distanceTo(hitPos);
-        double distanceFactor = HookMath.calculateDistanceFactor(distance, cfg.minDistance, cfg.maxDistance);
-
-        Vec3 velocity = HookMath.calculatePullVelocity(
-                player.position(), hitPos,
-                cfg.blockPullStrength, cfg.blockVerticalBoost, cfg.maxPullVelocity, distanceFactor
-        );
-        velocity = HookMath.clampHorizontalVelocity(velocity, cfg.maxHorizontalVelocity);
-        velocity = HookMath.clampVerticalVelocity(velocity, cfg.maxVerticalVelocity);
-
-        player.setDeltaMovement(velocity);
-        player.hurtMarked = true;
-        if (cfg.reduceFallDamage) {
-            player.resetFallDistance();
+        if (player instanceof ServerPlayer serverPlayer) {
+            PlayerPullManager.pullPlayerTo(serverPlayer, hitPos);
         }
     }
 
