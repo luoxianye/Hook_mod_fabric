@@ -4,6 +4,7 @@ import com.lxy.hook.config.HookConfig;
 import com.lxy.hook.item.ModItems;
 import com.lxy.hook.util.HookMath;
 import com.lxy.hook.util.PlayerPullManager;
+import com.lxy.hook.util.HookEquipment;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -239,9 +240,8 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
     }
 
     private ItemStack findHookInHand(Player player) {
-        if (player.getMainHandItem().getItem() == ModItems.HOOK) return player.getMainHandItem();
-        if (player.getOffhandItem().getItem() == ModItems.HOOK) return player.getOffhandItem();
-        return null;
+        ItemStack stack = HookEquipment.findUsableHook(player);
+        return stack.isEmpty() ? null : stack;
     }
 
     private void setOwnerUuid(UUID uuid) {

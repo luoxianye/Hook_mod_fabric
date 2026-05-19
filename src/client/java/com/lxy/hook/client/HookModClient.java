@@ -15,5 +15,6 @@ public class HookModClient implements ClientModInitializer {
 		);
 
 		HookRopeRenderer.register();
+		HookKeyBindings.initialize();
 	}
 }

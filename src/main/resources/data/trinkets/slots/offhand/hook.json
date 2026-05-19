@@ -1,0 +1,7 @@
+{
+  "icon": "hook:container/slots/hook",
+  "order": 10,
+  "amount": 1,
+  "drop_rule": "default",
+  "is_hidden": false
+}

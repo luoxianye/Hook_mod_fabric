@@ -46,59 +46,16 @@ public class HookItem extends Item {
         tooltipAdder.accept(Component.translatable("item.hook.hook.tooltip.cooldown"));
     }
 
-    // ========== 右键方块（直接点击） ==========
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
-        Level level = context.getLevel();
-        Player player = context.getPlayer();
-        if (player == null) {
-            return InteractionResult.PASS;
-        }
-        if (level.isClientSide()) {
-            return InteractionResult.SUCCESS;
-        }
-
-        ItemStack stack = context.getItemInHand();
-        if (player.getCooldowns().isOnCooldown(stack)) {
-            return InteractionResult.PASS;
-        }
-        player.getCooldowns().addCooldown(stack, HookConfig.INSTANCE.useCooldownTicks);
-
-        BlockPos blockPos = context.getClickedPos();
-        BlockState state = level.getBlockState(blockPos);
-
-        if (!canGrappleBlock(level, blockPos, state)) {
-            return InteractionResult.PASS;
-        }
-
-        Vec3 hitPos = context.getClickLocation();
-        return grappleBlock(player, stack, hitPos, blockPos, level);
+        return InteractionResult.PASS;
     }
-
-    // ========== 右键空气（发射投射物） ==========
 
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
-        ItemStack stack = player.getItemInHand(hand);
-
-        if (level.isClientSide()) {
-            return InteractionResult.SUCCESS;
-        }
-
-        if (player.getCooldowns().isOnCooldown(stack)) {
-            return InteractionResult.PASS;
-        }
-
-        // 右键使用瞬间进入冷却
-        player.getCooldowns().addCooldown(stack, HookConfig.INSTANCE.useCooldownTicks);
-
-        // 发射投射物
-        HookProjectileEntity.shoot(level, player);
-
-        return InteractionResult.CONSUME;
+        return InteractionResult.PASS;
     }
-
     // ========== 核心逻辑 ==========
 
     private InteractionResult grappleBlock(Player player, ItemStack stack, Vec3 hitPos,

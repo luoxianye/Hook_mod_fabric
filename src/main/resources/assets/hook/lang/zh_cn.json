@@ -1,6 +1,12 @@
 {
     "item.hook.hook": "勾爪",
-    "item.hook.hook.tooltip": "右键与方块或实体交互。",
+    "item.hook.hook.tooltip": "装备后按勾爪按键发射。",
     "item.hook.hook.tooltip.distance": "最大距离：32 格",
-    "item.hook.hook.tooltip.cooldown": "冷却：1 秒（方块）/ 1.25 秒（实体）"
+    "item.hook.hook.tooltip.cooldown": "冷却：1 秒（方块）/ 1.25 秒（实体）",
+
+    "key.category.hook.controls": "勾爪 Mod",
+    "key.hook.use_hook": "使用勾爪",
+
+    "trinkets.slot.chest.hook": "勾爪",
+    "message.hook.no_equipped_hook": "未装备勾爪"
 }
