@@ -8,7 +8,7 @@
     "key.hook.use_hook": "使用勾爪",
     "key.hook.use": "使用勾爪",
     "key.hook.toggle_mode": "切换勾爪模式",
-    "message.hook.anchored": "勾爪已固定，请使用按键 %s 松开",
+    "message.hook.anchored": "勾爪已固定，请使用按键 %s 或 %s 松开",
 
     "trinkets.slot.chest.hook": "勾爪",
     "message.hook.no_equipped_hook": "未装备勾爪"

@@ -2,6 +2,7 @@ package com.lxy.hook.network;
 
 import com.lxy.hook.util.HookModeManager;
 import com.lxy.hook.util.HookUseHandler;
+import com.lxy.hook.util.PlayerPullManager;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
@@ -18,6 +19,8 @@ public final class HookNetworking {
                     HookUseHandler.releaseOrUseEquippedHook(context.player());
                 } else if (payload.action() == HookActionPayload.TOGGLE_MODE) {
                     HookModeManager.toggleMode(context.player());
+                } else if (payload.action() == HookActionPayload.RELEASE_ANCHOR_ONLY) {
+                    PlayerPullManager.releaseModeBOnly(context.player(), true);
                 }
             });
         });

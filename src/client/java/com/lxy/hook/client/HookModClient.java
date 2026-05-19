@@ -23,6 +23,12 @@ public class HookModClient implements ClientModInitializer {
 	private static KeyMapping useHookKey;
 	private static KeyMapping toggleModeKey;
 
+	/**
+	 * 用于检测跳跃键从“未按下”变成“按下”的瞬间。
+	 * 避免玩家按住空格时每 tick 都发包。
+	 */
+	private static boolean wasJumpKeyDown = false;
+
 	@Override
 	public void onInitializeClient() {
 		EntityRenderers.register(
@@ -52,6 +58,7 @@ public class HookModClient implements ClientModInitializer {
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			if (client.player == null || client.level == null) {
+				wasJumpKeyDown = false;
 				return;
 			}
 
@@ -62,6 +69,14 @@ public class HookModClient implements ClientModInitializer {
 			while (toggleModeKey.consumeClick()) {
 				ClientPlayNetworking.send(new HookActionPayload(HookActionPayload.TOGGLE_MODE));
 			}
+
+			boolean isJumpKeyDown = client.options.keyJump.isDown();
+
+			if (isJumpKeyDown && !wasJumpKeyDown) {
+				ClientPlayNetworking.send(new HookActionPayload(HookActionPayload.RELEASE_ANCHOR_ONLY));
+			}
+
+			wasJumpKeyDown = isJumpKeyDown;
 		});
 	}
 }

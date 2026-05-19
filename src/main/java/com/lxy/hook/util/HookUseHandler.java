@@ -10,7 +10,7 @@ public final class HookUseHandler {
     }
 
     public static void releaseOrUseEquippedHook(ServerPlayer player) {
-        if (PlayerPullManager.release(player, true)) {
+        if (PlayerPullManager.releaseForUseKey(player, true)) {
             return;
         }
 
