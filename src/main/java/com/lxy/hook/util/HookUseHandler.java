@@ -2,12 +2,19 @@ package com.lxy.hook.util;
 
 import com.lxy.hook.config.HookConfig;
 import com.lxy.hook.entity.HookProjectileEntity;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
 public final class HookUseHandler {
     private HookUseHandler() {
+    }
+
+    public static void releaseOrUseEquippedHook(ServerPlayer player) {
+        if (PlayerPullManager.release(player, true)) {
+            return;
+        }
+
+        useEquippedHook(player);
     }
 
     public static void useEquippedHook(ServerPlayer player) {
@@ -22,7 +29,6 @@ public final class HookUseHandler {
         }
 
         player.getCooldowns().addCooldown(hookStack, HookConfig.INSTANCE.useCooldownTicks);
-
         HookProjectileEntity.shoot(player.level(), player);
     }
 }

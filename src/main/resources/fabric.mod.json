@@ -30,6 +30,8 @@
 		"minecraft": "~26.1.2",
 		"java": ">=25",
 		"fabric-api": "*",
-		"trinkets_updated": ">=4.0.0-alpha.9"
+		"trinkets_updated": ">=4.0.0-alpha.9",
+		"fabric-key-mapping-api-v1": "*",
+		"fabric-networking-api-v1": "*"
 	}
 }

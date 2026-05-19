@@ -5,6 +5,9 @@ import com.lxy.hook.item.ModItems;
 import com.lxy.hook.util.HookMath;
 import com.lxy.hook.util.PlayerPullManager;
 import com.lxy.hook.util.HookEquipment;
+import com.lxy.hook.util.HookMode;
+import com.lxy.hook.util.HookModeManager;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -40,6 +43,11 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
     private static final EntityDataAccessor<String> OWNER_UUID_STRING =
             SynchedEntityData.defineId(HookProjectileEntity.class, EntityDataSerializers.STRING);
 
+    private static final EntityDataAccessor<Boolean> ANCHORED =
+            SynchedEntityData.defineId(HookProjectileEntity.class, EntityDataSerializers.BOOLEAN);
+
+    private BlockPos anchoredBlockPos = BlockPos.ZERO;
+
     private int lifeTicks;
     private double traveledDistance;
 
@@ -62,10 +70,44 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
         return hook;
     }
 
+    private void tickAnchoredHook() {
+        setDeltaMovement(Vec3.ZERO);
+
+        if (level().isClientSide()) {
+            return;
+        }
+
+        Player owner = getOwnerPlayer();
+
+        if (!(owner instanceof ServerPlayer serverPlayer) || !owner.isAlive()) {
+            discard();
+            return;
+        }
+
+        BlockState state = level().getBlockState(anchoredBlockPos);
+
+        if (state.isAir() || state.getCollisionShape(level(), anchoredBlockPos).isEmpty()) {
+            PlayerPullManager.release(serverPlayer, false);
+            discard();
+        }
+    }
+
+    private void anchorToBlock(ServerPlayer owner, BlockHitResult hit) {
+        this.anchoredBlockPos = hit.getBlockPos();
+        this.entityData.set(ANCHORED, true);
+        this.setPos(hit.getLocation());
+        this.setDeltaMovement(Vec3.ZERO);
+
+        PlayerPullManager.pullPlayerToAndAnchor(owner, hit.getLocation(), this.getId());
+    }
+
     @Override
     public void tick() {
         super.tick();
-
+        if (isAnchored()) {
+            tickAnchoredHook();
+            return;
+        }
         lifeTicks++;
 
         if (lifeTicks > MAX_LIFE_TICKS) {
@@ -165,6 +207,13 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
             serverLevel.sendParticles(ParticleTypes.CRIT,
                     hit.getLocation().x, hit.getLocation().y, hit.getLocation().z,
                     8, 0.15, 0.15, 0.15, 0.05);
+        }
+
+        if (owner instanceof ServerPlayer serverPlayer
+                && HookModeManager.getMode(serverPlayer) == HookMode.ANCHOR) {
+            anchorToBlock(serverPlayer, hit);
+            applyCooldownAndDurability(owner);
+            return;
         }
 
         pullPlayerToHit(owner, hit.getLocation());
@@ -276,6 +325,7 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(OWNER_UUID_STRING, "");
+        builder.define(ANCHORED, false);
     }
 
     @Override
@@ -286,6 +336,10 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
         }
         out.putInt("LifeTicks", lifeTicks);
         out.putDouble("TraveledDistance", traveledDistance);
+        out.putBoolean("Anchored", this.entityData.get(ANCHORED));
+        out.putInt("AnchorX", anchoredBlockPos.getX());
+        out.putInt("AnchorY", anchoredBlockPos.getY());
+        out.putInt("AnchorZ", anchoredBlockPos.getZ());
     }
 
     @Override
@@ -293,7 +347,16 @@ public class HookProjectileEntity extends Entity implements ItemSupplier {
         in.getString("Owner").ifPresent(uuidStr -> this.entityData.set(OWNER_UUID_STRING, uuidStr));
         lifeTicks = in.getIntOr("LifeTicks", 0);
         traveledDistance = in.getDoubleOr("TraveledDistance", 0.0D);
+        this.entityData.set(ANCHORED, in.getBooleanOr("Anchored", false));
+        anchoredBlockPos = new BlockPos(
+                in.getIntOr("AnchorX", 0),
+                in.getIntOr("AnchorY", 0),
+                in.getIntOr("AnchorZ", 0)
+        );
 
+    }
+    public boolean isAnchored() {
+        return this.entityData.get(ANCHORED);
     }
 
     @Override

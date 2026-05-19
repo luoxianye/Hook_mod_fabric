@@ -1,9 +1,12 @@
 package com.lxy.hook.util;
 
 import com.lxy.hook.config.HookConfig;
+import com.lxy.hook.entity.HookProjectileEntity;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
@@ -15,7 +18,7 @@ public final class PlayerPullManager {
     private static final Map<UUID, PullTask> PULLING_PLAYERS = new HashMap<>();
 
     private static final double ARRIVE_DISTANCE = 1.15D;
-    private static final int MAX_PULL_TICKS = 40;
+    private static final int MAX_PULL_TICKS = 60;
 
     private PlayerPullManager() {
     }
@@ -25,8 +28,37 @@ public final class PlayerPullManager {
     }
 
     public static void pullPlayerTo(ServerPlayer player, Vec3 targetPos) {
-        PULLING_PLAYERS.put(player.getUUID(), new PullTask(targetPos));
+        PULLING_PLAYERS.put(player.getUUID(), PullTask.normal(targetPos));
         player.resetFallDistance();
+    }
+
+    public static void pullPlayerToAndAnchor(ServerPlayer player, Vec3 targetPos, int hookEntityId) {
+        PULLING_PLAYERS.put(player.getUUID(), PullTask.anchor(targetPos, hookEntityId));
+        player.resetFallDistance();
+    }
+
+    public static boolean release(ServerPlayer player, boolean showMessage) {
+        PullTask task = PULLING_PLAYERS.remove(player.getUUID());
+
+        if (task == null) {
+            return false;
+        }
+
+        discardHookEntity(player, task);
+        player.setDeltaMovement(Vec3.ZERO);
+        player.hurtMarked = true;
+        player.resetFallDistance();
+
+        if (showMessage) {
+            HookMessage.actionBar(player, "勾爪已松开");
+        }
+
+        return true;
+    }
+
+    public static boolean isAnchored(ServerPlayer player) {
+        PullTask task = PULLING_PLAYERS.get(player.getUUID());
+        return task != null && task.anchored;
     }
 
     private static void tick(MinecraftServer server) {
@@ -36,12 +68,16 @@ public final class PlayerPullManager {
 
         while (iterator.hasNext()) {
             Map.Entry<UUID, PullTask> entry = iterator.next();
-
             ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
             PullTask task = entry.getValue();
 
             if (player == null || !player.isAlive()) {
                 iterator.remove();
+                continue;
+            }
+
+            if (task.anchored) {
+                tickAnchoredPlayer(player, task, iterator);
                 continue;
             }
 
@@ -51,14 +87,28 @@ public final class PlayerPullManager {
             Vec3 toTarget = task.targetPos.subtract(playerPos);
             double distance = toTarget.length();
 
-            if (distance <= ARRIVE_DISTANCE || task.ticks > MAX_PULL_TICKS) {
-                player.setDeltaMovement(player.getDeltaMovement().scale(0.25D));
-                player.hurtMarked = true;
-
-                if (cfg.reduceFallDamage) {
+            if (distance <= ARRIVE_DISTANCE) {
+                if (task.anchorAfterArrival) {
+                    task.anchored = true;
+                    task.anchorPos = player.position();
+                    player.setDeltaMovement(Vec3.ZERO);
+                    player.hurtMarked = true;
                     player.resetFallDistance();
+                    HookMessage.actionBar(player, "勾爪已固定，按 R 松开");
+                } else {
+                    player.setDeltaMovement(player.getDeltaMovement().scale(0.25D));
+                    player.hurtMarked = true;
+                    if (cfg.reduceFallDamage) {
+                        player.resetFallDistance();
+                    }
+                    iterator.remove();
                 }
 
+                continue;
+            }
+
+            if (task.ticks > MAX_PULL_TICKS) {
+                discardHookEntity(player, task);
                 iterator.remove();
                 continue;
             }
@@ -72,7 +122,6 @@ public final class PlayerPullManager {
             double speed = cfg.blockPullStrength * distanceFactor;
 
             Vec3 velocity = toTarget.normalize().scale(speed);
-
             velocity = HookMath.clampHorizontalVelocity(velocity, cfg.maxHorizontalVelocity);
             velocity = HookMath.clampVerticalVelocity(velocity, cfg.maxVerticalVelocity);
 
@@ -85,13 +134,66 @@ public final class PlayerPullManager {
         }
     }
 
+    private static void tickAnchoredPlayer(
+            ServerPlayer player,
+            PullTask task,
+            Iterator<Map.Entry<UUID, PullTask>> iterator
+    ) {
+        Entity hookEntity = player.level().getEntity(task.hookEntityId);
+
+        if (!(hookEntity instanceof HookProjectileEntity) || !hookEntity.isAlive()) {
+            iterator.remove();
+            return;
+        }
+
+        Vec3 correction = task.anchorPos.subtract(player.position());
+
+        if (correction.lengthSqr() > 0.01D) {
+            player.setDeltaMovement(correction.scale(0.45D));
+        } else {
+            player.setDeltaMovement(Vec3.ZERO);
+        }
+
+        player.hurtMarked = true;
+        player.resetFallDistance();
+    }
+
+    private static void discardHookEntity(ServerPlayer player, PullTask task) {
+        if (task.hookEntityId < 0) {
+            return;
+        }
+
+        Entity entity = player.level().getEntity(task.hookEntityId);
+
+        if (entity instanceof HookProjectileEntity hook) {
+            hook.discard();
+        }
+    }
+
     private static class PullTask {
         private final Vec3 targetPos;
-        private int ticks;
+        private final boolean anchorAfterArrival;
+        private final int hookEntityId;
 
-        private PullTask(Vec3 targetPos) {
+        private Vec3 anchorPos;
+        private int ticks;
+        private boolean anchored;
+
+        private PullTask(Vec3 targetPos, boolean anchorAfterArrival, int hookEntityId) {
             this.targetPos = targetPos;
+            this.anchorAfterArrival = anchorAfterArrival;
+            this.hookEntityId = hookEntityId;
+            this.anchorPos = targetPos;
             this.ticks = 0;
+            this.anchored = false;
+        }
+
+        private static PullTask normal(Vec3 targetPos) {
+            return new PullTask(targetPos, false, -1);
+        }
+
+        private static PullTask anchor(Vec3 targetPos, int hookEntityId) {
+            return new PullTask(targetPos, true, hookEntityId);
         }
     }
 }

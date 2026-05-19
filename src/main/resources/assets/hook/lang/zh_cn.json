@@ -6,6 +6,7 @@
 
     "key.category.hook.controls": "勾爪 Mod",
     "key.hook.use_hook": "使用勾爪",
+    "key.hook.toggle_mode": "切换勾爪模式",
 
     "trinkets.slot.chest.hook": "勾爪",
     "message.hook.no_equipped_hook": "未装备勾爪"
