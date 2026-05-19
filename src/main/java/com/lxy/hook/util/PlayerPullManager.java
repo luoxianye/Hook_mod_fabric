@@ -2,6 +2,7 @@ package com.lxy.hook.util;
 
 import com.lxy.hook.config.HookConfig;
 import com.lxy.hook.entity.HookProjectileEntity;
+import net.minecraft.network.chat.Component;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -94,7 +95,10 @@ public final class PlayerPullManager {
                     player.setDeltaMovement(Vec3.ZERO);
                     player.hurtMarked = true;
                     player.resetFallDistance();
-                    HookMessage.actionBar(player, "勾爪已固定，按 R 松开");
+                    HookMessage.actionBar(player, Component.translatable(
+                            "message.hook.anchored",
+                            Component.keybind("key.hook.use")
+                    ));
                 } else {
                     player.setDeltaMovement(player.getDeltaMovement().scale(0.25D));
                     player.hurtMarked = true;

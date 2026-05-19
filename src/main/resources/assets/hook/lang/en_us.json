@@ -6,7 +6,9 @@
 
     "key.category.hook.controls": "Hook Mod",
     "key.hook.use_hook": "Use Hook",
+    "key.hook.use": "Use Hook",
     "key.hook.toggle_mode": "Switch Hook Mode",
+    "message.hook.anchored": "Hook anchored. Press %s to release",
 
     "trinkets.slot.chest.hook": "Hook",
     "message.hook.no_equipped_hook": "No hook equipped"
